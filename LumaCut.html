@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>LumaCut</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #09090b;
+      --fg: #f1f1f4;
+      --card: #111114;
+      --elevated: #18181c;
+      --muted: #9b9ba6;
+      --border: #2a2a32;
+      --primary: #e8e9ed;
+      --primary-fg: #0a0a0b;
+      --steel: #8fa3b8;
+      --success: #6a9e7a;
+      --radius: 12px;
+      --font: "Figtree", ui-sans-serif, system-ui, sans-serif;
+      --display: "Syne", ui-sans-serif, system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; border-color: var(--border); }
+    html, body { height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--fg); font-family: var(--font); }
+    button { font-family: inherit; cursor: pointer; }
+    button:disabled { opacity: .4; cursor: default; }
+    input[type="file"] { display: none; }
+    h1, h2 { font-family: var(--display); letter-spacing: -0.03em; margin: 0; }
+    .app { display: flex; flex-direction: column; height: 100dvh; }
+    header {
+      display: flex; align-items: center; gap: 12px; height: 56px;
+      padding: 0 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .wordmark { font-family: var(--display); font-size: 20px; font-weight: 700; }
+    .wordmark span { color: var(--muted); }
+    .meta { display: none; flex-direction: column; min-width: 0; }
+    .meta b { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .meta small { color: var(--muted); font-size: 12px; }
+    .spacer { flex: 1; }
+    .btn {
+      height: 36px; padding: 0 14px; border-radius: 8px; border: 0;
+      font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px;
+      background: var(--elevated); color: var(--fg);
+    }
+    .btn:hover { background: #22222a; }
+    .btn.primary { background: var(--primary); color: var(--primary-fg); }
+    .btn.primary:hover { opacity: .9; }
+    .btn.ghost { background: transparent; }
+    .body { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+    .stage {
+      height: 208px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      padding: 12px; position: relative;
+    }
+    .frame {
+      position: relative; width: 100%; max-height: 100%; aspect-ratio: 16/9;
+      background: var(--elevated); border-radius: 12px; overflow: hidden;
+      box-shadow: 0 0 0 1px var(--border);
+    }
+    canvas { width: 100%; height: 100%; object-fit: contain; display: block; cursor: pointer; }
+    .play {
+      position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%);
+      width: 56px; height: 56px; border-radius: 999px; border: 0;
+      background: var(--primary); color: var(--primary-fg);
+    }
+    .pause-mini {
+      position: absolute; top: 12px; left: 12px; width: 44px; height: 44px; border-radius: 999px;
+      border: 0; background: rgba(9,9,11,.7); color: var(--fg);
+    }
+    .tools {
+      display: flex; flex-direction: column; flex: 1; min-height: 0; border-top: 1px solid var(--border);
+      background: var(--card);
+    }
+    .rail {
+      display: flex; gap: 4px; overflow-x: auto; padding: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rail button {
+      min-width: 64px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 12px;
+    }
+    .rail button.on, .rail button:hover { background: #1c1c22; color: var(--fg); }
+    .panel { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
+    .panel h2 { font-size: 16px; margin-bottom: 8px; }
+    .hint { color: var(--muted); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 4px; }
+    .row label { font-size: 13px; color: var(--muted); }
+    .row .val { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+    input[type="range"] { width: 100%; accent-color: var(--primary); margin: 0 0 14px; }
+    .preset, .chip, .list-btn {
+      width: 100%; text-align: left; border: 0; border-radius: 8px; padding: 12px;
+      background: var(--elevated); color: var(--fg); margin-bottom: 8px;
+    }
+    .preset small, .chip { display: block; }
+    .preset small { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .preset:hover, .list-btn:hover, .list-btn.on { background: #1c1c22; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+    .chips .chip { width: auto; padding: 8px 12px; font-size: 13px; }
+    .chips .chip.on { background: var(--primary); color: var(--primary-fg); }
+    .vu { background: var(--elevated); border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+    .vu-bars { display: flex; gap: 8px; height: 64px; align-items: flex-end; }
+    .vu-col { flex: 1; background: var(--bg); border-radius: 4px; position: relative; overflow: hidden; }
+    .vu-fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--steel); }
+    .vu-labels { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-top: 8px; }
+    .field { width: 100%; height: 44px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--elevated); color: var(--fg); padding: 0 12px; font: inherit; margin-bottom: 12px; }
+    .timeline { border-top: 1px solid var(--border); padding: 8px 16px 12px; background: var(--card); flex-shrink: 0; }
+    .transport { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .time { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .time.muted { color: var(--muted); }
+    .track {
+      position: relative; height: 64px; background: var(--elevated); border-radius: 8px; cursor: pointer;
+    }
+    .clip {
+      position: absolute; top: 10px; height: 20px; background: rgba(143,163,184,.25);
+      border-radius: 4px; overflow: hidden; font-size: 11px; line-height: 20px; padding: 0 8px; white-space: nowrap;
+    }
+    .playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--primary); }
+    .playhead i { position: absolute; top: 0; left: 50%; width: 8px; height: 8px; border-radius: 99px; background: var(--primary); transform: translateX(-50%); }
+    .switch { width: 44px; height: 24px; border-radius: 99px; border: 1px solid var(--border); background: var(--elevated); position: relative; }
+    .switch.on { background: var(--primary); }
+    .switch i { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 99px; background: var(--muted); transition: transform .15s; }
+    .switch.on i { transform: translateX(20px); background: var(--primary-fg); }
+    .mark { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--elevated); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      background: var(--card); color: var(--fg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; font-size: 13px; display: none; z-index: 20;
+    }
+    .box { position: absolute; border: 1px solid rgba(232,233,237,.8); background: rgba(232,233,237,.1); pointer-events: none; }
+    @media (min-width: 900px) {
+      .meta { display: flex; }
+      .body { flex-direction: row; }
+      .stage { height: auto; flex: 1; min-height: 0; padding: 20px; }
+      .tools { flex-direction: row-reverse; width: 24rem; flex: none; border-top: 0; border-left: 1px solid var(--border); }
+      .rail { flex-direction: column; border-bottom: 0; border-left: 1px solid var(--border); width: 72px; overflow: visible; }
+      .panel { width: 20rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="wordmark">Luma<span>Cut</span></div>
+      <div class="meta">
+        <b id="clipName">Studio demo reel</b>
+        <small id="clipKind">Built-in reel</small>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn" id="importBtn">Import</button>
+      <button class="btn primary" id="exportBtn">Export</button>
+      <input id="file" type="file" accept="video/*,audio/*,image/*" multiple />
+    </header>
+    <div class="body">
+      <section class="stage" id="drop">
+        <div class="frame">
+          <canvas id="view" width="1280" height="720"></canvas>
+          <button class="play" id="playBig" aria-label="Play">▶</button>
+          <button class="pause-mini" id="pauseMini" aria-label="Pause" hidden>❚❚</button>
+          <div id="boxes"></div>
+        </div>
+      </section>
+      <aside class="tools">
+        <nav class="rail" id="rail"></nav>
+        <div class="panel" id="panel"></div>
+      </aside>
+    </div>
+    <section class="timeline">
+      <div class="transport">
+        <button class="btn ghost" id="toIn" aria-label="To in">⏮</button>
+        <button class="btn" id="playSmall" aria-label="Play">▶</button>
+        <button class="btn ghost" id="stop" aria-label="Stop">■</button>
+        <span class="time" id="now">00:00.00</span>
+        <span class="time muted" id="dur">/ 00:08.00</span>
+      </div>
+      <div class="track" id="track">
+        <div class="clip" id="vclip">Studio demo reel</div>
+        <div class="playhead" id="head"><i></i></div>
+      </div>
+    </section>
+  </div>
+  <div class="toast" id="toast"></div>
+  <video id="vid" playsinline preload="auto" hidden></video>
+  <audio id="musicEl" preload="auto" loop hidden></audio>
+  <script>
+    const DEMO = 8;
+    const WM = { x: 0.78, y: 0.86, w: 0.18, h: 0.08 };
+    const TOOLS = [
+      ["enhance", "Enhance"],
+      ["video", "Video"],
+      ["audio", "Audio"],
+      ["music", "Music"],
+      ["picture", "Picture"],
+      ["watermark", "Stamp"],
+    ];
+    const PRESETS = {
+      auto: { v: { brightness: 6, contrast: 12, saturation: 8, warmth: 8, vignette: 16, sharpness: 18, fade: 0.4, reframe: 1 }, a: { volume: 1, vocal: 48, bass: 10, treble: 8, presence: 36, noise: 22, compress: 42, isolate: 12 } },
+      cinema: { v: { brightness: -2, contrast: 16, saturation: -6, warmth: 22, vignette: 34, sharpness: 8, fade: 0.8, reframe: 1.02 }, a: { volume: 0.95, vocal: 20, bass: 16, treble: -6, presence: 18, noise: 10, compress: 28, isolate: 0 } },
+      vivid: { v: { brightness: 8, contrast: 18, saturation: 28, warmth: 4, vignette: 8, sharpness: 28, fade: 0, reframe: 1 }, a: { volume: 1.05, vocal: 22, bass: 8, treble: 18, presence: 20, noise: 8, compress: 24, isolate: 0 } },
+      night: { v: { brightness: -8, contrast: 20, saturation: -10, warmth: -18, vignette: 40, sharpness: 12, fade: 0.6, reframe: 1 }, a: { volume: 0.92, vocal: 30, bass: 22, treble: -8, presence: 12, noise: 28, compress: 36, isolate: 8 } },
+      voice: { v: { brightness: 4, contrast: 8, saturation: 4, warmth: 6, vignette: 10, sharpness: 10, fade: 0.2, reframe: 1 }, a: { volume: 1.08, vocal: 72, bass: -8, treble: 12, presence: 58, noise: 40, compress: 62, isolate: 55 } },
+      music: { v: { brightness: 4, contrast: 10, saturation: 12, warmth: 10, vignette: 14, sharpness: 6, fade: 0.5, reframe: 1 }, a: { volume: 1, vocal: 8, bass: 24, treble: 16, presence: 8, noise: 6, compress: 20, isolate: 0 } },
+    };
+
+    const S = {
+      tool: "enhance",
+      playing: false,
+      t: 0,
+      in: 0,
+      out: DEMO,
+      duration: DEMO,
+      kind: "demo",
+      name: "Studio demo reel",
+      videoUrl: null,
+      music: null,
+      pictures: [],
+      selectedPic: null,
+      watermarks: [],
+      selectedWm: null,
+      marking: false,
+      title: { text: "", y: 0.18, size: 42, color: "white" },
+      v: { brightness: 0, contrast: 0, saturation: 0, warmth: 0, vignette: 0, sharpness: 0, fade: 0, reframe: 1 },
+      a: { volume: 1, vocal: 0, bass: 0, treble: 0, presence: 0, noise: 0, compress: 18, isolate: 0 },
+      levels: { bass: 0, mid: 0, high: 0, peak: 0 },
+    };
+
+    const canvas = document.getElementById("view");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const off = document.createElement("canvas");
+    const octx = off.getContext("2d");
+    const video = document.getElementById("vid");
+    const musicEl = document.getElementById("musicEl");
+    const imgs = new Map();
+    let ac, nodes, demoBank, demoOrigin = 0, raf = 0, rec = null;
+
+    function clamp(n, a, b) { return Math.min(b, Math.max(a, n)); }
+    function tc(s) {
+      s = Math.max(0, s || 0);
+      const m = Math.floor(s / 60);
+      const rem = s - m * 60;
+      const w = Math.floor(rem);
+      const cs = Math.floor((rem - w) * 100);
+      return String(m).padStart(2, "0") + ":" + String(w).padStart(2, "0") + "." + String(cs).padStart(2, "0");
+    }
+    function toast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.style.display = "block";
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => { el.style.display = "none"; }, 2200);
+    }
+    function uid() { return Math.random().toString(36).slice(2, 9); }
+
+    function drawDemo(c, time, w, h) {
+      const t = Math.max(0, time);
+      c.fillStyle = "#09090b";
+      c.fillRect(0, 0, w, h);
+      const lx = w * (0.5 + Math.sin(t * 0.42) * 0.16);
+      const ly = h * (0.42 + Math.cos(t * 0.31) * 0.08);
+      const glow = c.createRadialGradient(lx, ly, 12, lx, ly, Math.max(w, h) * 0.58);
+      glow.addColorStop(0, "rgba(200,204,212,0.2)");
+      glow.addColorStop(0.4, "rgba(90,104,122,0.08)");
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = glow;
+      c.fillRect(0, 0, w, h);
+      const open = 0.32 + (1 - Math.exp(-t * 0.85)) * 0.26;
+      const radius = Math.min(w, h) * open;
+      c.strokeStyle = "rgba(232,233,237,0.55)";
+      c.lineWidth = Math.max(1.5, w * 0.0016);
+      c.beginPath(); c.arc(w * 0.5, h * 0.44, radius, 0, Math.PI * 2); c.stroke();
+      c.save();
+      c.translate(w * 0.5, h * 0.44);
+      c.rotate(t * 0.12);
+      c.strokeStyle = "rgba(200,204,212,0.14)";
+      for (let i = 0; i < 6; i++) {
+        c.rotate(Math.PI / 3);
+        c.beginPath(); c.moveTo(Math.min(w, h) * 0.07, 0); c.lineTo(radius, 0); c.stroke();
+      }
+      c.restore();
+      const fade = Math.min(1, Math.max(0, (t - 0.55) / 0.7));
+      c.globalAlpha = fade;
+      c.fillStyle = "#f1f1f4";
+      c.font = "700 " + Math.floor(w * 0.062) + "px Syne, sans-serif";
+      c.textAlign = "center";
+      c.fillText("LumaCut", w * 0.5, h * 0.775);
+      c.globalAlpha = fade * 0.72;
+      c.fillStyle = "#9b9ba6";
+      c.font = "500 " + Math.floor(w * 0.016) + "px Figtree, sans-serif";
+      c.fillText("STUDIO DEMO REEL", w * 0.5, h * 0.822);
+      c.globalAlpha = 1;
+      const bx = w * WM.x, by = h * WM.y, bw = w * WM.w, bh = h * WM.h;
+      c.fillStyle = "rgba(8,8,10,0.66)";
+      c.beginPath(); c.roundRect(bx, by, bw, bh, 8); c.fill();
+      c.strokeStyle = "rgba(241,241,244,0.3)";
+      c.beginPath(); c.roundRect(bx, by, bw, bh, 8); c.stroke();
+      c.fillStyle = "rgba(241,241,244,0.94)";
+      c.font = "600 " + Math.floor(bh * 0.42) + "px Syne, sans-serif";
+      c.textBaseline = "middle";
+      c.fillText("LUMA", bx + bw / 2, by + bh / 2);
+      c.textBaseline = "alphabetic";
+    }
+
+    function mediaTime() {
+      if (S.kind === "video") return video.currentTime || 0;
+      if (!S.playing) return S.t;
+      return (performance.now() - demoOrigin) / 1000;
+    }
+
+    function paint() {
+      const w = canvas.width, h = canvas.height, fx = S.v, t = mediaTime();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.filter = "none"; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "#09090b"; ctx.fillRect(0, 0, w, h);
+      const b = 1 + fx.brightness / 100, c = 1 + fx.contrast / 100, s = 1 + fx.saturation / 100;
+      ctx.filter = "brightness(" + b + ") contrast(" + c + ") saturate(" + s + ")";
+      const z = clamp(fx.reframe, 1, 1.6);
+      if (S.kind === "demo") {
+        off.width = w; off.height = h;
+        octx.setTransform(1, 0, 0, 1, 0, 0); octx.filter = "none";
+        drawDemo(octx, t, w, h);
+        const sw = w / z, sh = h / z;
+        ctx.drawImage(off, (w - sw) / 2, (h - sh) / 2, sw, sh, 0, 0, w, h);
+      } else if (video.readyState >= 2) {
+        const vw = video.videoWidth || w, vh = video.videoHeight || h;
+        const sw = vw / z, sh = vh / z;
+        ctx.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, w, h);
+      }
+      ctx.filter = "none";
+      if (fx.warmth !== 0) {
+        ctx.globalCompositeOperation = fx.warmth > 0 ? "soft-light" : "multiply";
+        const a = Math.abs(fx.warmth) / 220;
+        ctx.fillStyle = fx.warmth > 0 ? "rgba(232,186,140," + a + ")" : "rgba(72,108,156," + a + ")";
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalCompositeOperation = "source-over";
+      }
+      if (fx.sharpness > 0) {
+        ctx.globalAlpha = fx.sharpness / 220;
+        ctx.filter = "contrast(1.45)";
+        ctx.drawImage(canvas, 0, 0);
+        ctx.filter = "none"; ctx.globalAlpha = 1;
+      }
+      if (fx.vignette > 0) {
+        const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.22, w / 2, h / 2, Math.max(w, h) * 0.72);
+        g.addColorStop(0, "rgba(0,0,0,0)");
+        g.addColorStop(1, "rgba(0,0,0," + fx.vignette / 100 + ")");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      }
+      S.watermarks.forEach((r) => patchWm(r, w, h));
+      S.pictures.forEach((p) => {
+        let img = imgs.get(p.url);
+        if (!img) { img = new Image(); img.src = p.url; imgs.set(p.url, img); }
+        if (!img.complete || !img.naturalWidth) return;
+        const dw = w * 0.28 * p.scale;
+        const dh = (img.naturalHeight / img.naturalWidth) * dw;
+        ctx.globalAlpha = p.opacity;
+        ctx.drawImage(img, p.x * w - dw / 2, p.y * h - dh / 2, dw, dh);
+        ctx.globalAlpha = 1;
+      });
+      if (S.title.text.trim()) {
+        const colors = { white: "#f1f1f4", ink: "#0a0a0b", steel: "#c8ccd4" };
+        ctx.fillStyle = colors[S.title.color];
+        ctx.font = "600 " + Math.floor((S.title.size / 100) * w * 0.18) + "px Syne, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 18;
+        ctx.fillText(S.title.text, w * 0.5, S.title.y * h, w * 0.9);
+        ctx.shadowBlur = 0; ctx.textBaseline = "alphabetic";
+      }
+      if (fx.fade > 0) {
+        let a = 1;
+        const into = t - S.in, left = S.out - t;
+        if (into < fx.fade) a = clamp(into / fx.fade, 0, 1);
+        if (left < fx.fade) a = Math.min(a, clamp(left / fx.fade, 0, 1));
+        if (a < 1) { ctx.fillStyle = "rgba(9,9,11," + (1 - a) + ")"; ctx.fillRect(0, 0, w, h); }
+      }
+    }
+
+    function patchWm(r, w, h) {
+      const x = r.x * w, y = r.y * h, rw = r.w * w, rh = r.h * h;
+      if (rw < 2 || rh < 2) return;
+      if (r.mode === "cover") { ctx.fillStyle = "#111114"; ctx.fillRect(x, y, rw, rh); return; }
+      if (r.mode === "clone") ctx.drawImage(canvas, x, Math.max(0, y - rh), rw, rh, x, y, rw, rh);
+      const pad = 12;
+      off.width = Math.max(2, Math.ceil(rw));
+      off.height = Math.max(2, Math.ceil(rh));
+      octx.filter = "blur(" + (4 + r.strength / 100 * 22) + "px)";
+      octx.drawImage(canvas, x - pad, y - pad, rw + pad * 2, rh + pad * 2, -pad, -pad, rw + pad * 2, rh + pad * 2);
+      octx.filter = "none";
+      ctx.drawImage(off, x, y, rw, rh);
+    }
+
+    async function ensureAudio() {
+      if (ac) return ac;
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      const input = ac.createGain();
+      const hp = ac.createBiquadFilter(); hp.type = "highpass";
+      const bass = ac.createBiquadFilter(); bass.type = "lowshelf"; bass.frequency.value = 140;
+      const vocal = ac.createBiquadFilter(); vocal.type = "peaking"; vocal.frequency.value = 2500; vocal.Q.value = 0.9;
+      const presence = ac.createBiquadFilter(); presence.type = "peaking"; presence.frequency.value = 4500;
+      const treble = ac.createBiquadFilter(); treble.type = "highshelf"; treble.frequency.value = 8000;
+      const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 18000;
+      const comp = ac.createDynamicsCompressor();
+      const master = ac.createGain();
+      const analyser = ac.createAnalyser(); analyser.fftSize = 128;
+      const recDest = ac.createMediaStreamDestination();
+      const musicGain = ac.createGain();
+      const duck = ac.createGain();
+      input.connect(hp).connect(bass).connect(vocal).connect(presence).connect(treble).connect(lp).connect(comp).connect(master);
+      master.connect(analyser); analyser.connect(ac.destination); master.connect(recDest);
+      musicGain.connect(duck); duck.connect(ac.destination); duck.connect(recDest);
+      ac.createMediaElementSource(video).connect(input);
+      ac.createMediaElementSource(musicEl).connect(musicGain);
+      nodes = { input, hp, bass, vocal, presence, treble, lp, comp, master, analyser, recDest, musicGain, duck, freq: new Uint8Array(64) };
+      applyAudio();
+      return ac;
+    }
+
+    function applyAudio() {
+      if (!nodes) return;
+      const a = S.a;
+      nodes.hp.frequency.value = 20 + a.noise * 2.2 + a.isolate * 1.6;
+      nodes.bass.gain.value = (a.bass / 100) * 12;
+      nodes.vocal.gain.value = (a.vocal / 100) * 12;
+      nodes.presence.gain.value = (a.presence / 100) * 9;
+      nodes.treble.gain.value = (a.treble / 100) * 10 - a.noise * 0.04;
+      nodes.lp.frequency.value = 18000 - a.isolate * 90;
+      nodes.master.gain.value = a.volume;
+      nodes.musicGain.gain.value = S.music ? S.music.volume : 0;
+      nodes.comp.threshold.value = -8 - (a.compress / 100) * 24;
+      nodes.comp.ratio.value = 1.5 + (a.compress / 100) * 6;
+    }
+
+    function stopDemoAudio() {
+      if (!demoBank) return;
+      demoBank.forEach((n) => { try { if (n.stop) n.stop(); } catch (e) {} n.disconnect && n.disconnect(); });
+      demoBank = null;
+    }
+
+    function startDemoAudio() {
+      if (!ac || !nodes) return;
+      stopDemoAudio();
+      const make = (type, freq, gain) => {
+        const osc = ac.createOscillator(), g = ac.createGain();
+        osc.type = type; osc.frequency.value = freq; g.gain.value = gain;
+        osc.connect(g).connect(nodes.input); osc.start();
+        return { osc, g };
+      };
+      const bass = make("sine", 55, 0.16);
+      const voice = make("sawtooth", 196, 0.045);
+      const lfo = ac.createOscillator(); const lg = ac.createGain();
+      lfo.frequency.value = 4.6; lg.gain.value = 8;
+      lfo.connect(lg).connect(voice.osc.frequency); lfo.start();
+      const spark = make("sine", 784, 0.03);
+      demoBank = [bass.osc, bass.g, voice.osc, voice.g, lfo, lg, spark.osc, spark.g];
+    }
+
+    async function play() {
+      await ensureAudio();
+      await ac.resume();
+      applyAudio();
+      if (S.t >= S.out - 0.03) seek(S.in);
+      if (S.kind === "video") {
+        stopDemoAudio();
+        video.currentTime = S.t;
+        try { await video.play(); } catch (e) {}
+      } else {
+        demoOrigin = performance.now() - S.t * 1000;
+        startDemoAudio();
+      }
+      if (S.music) {
+        if (musicEl.src !== S.music.url) musicEl.src = S.music.url;
+        try { await musicEl.play(); } catch (e) {}
+      }
+      S.playing = true;
+      syncPlayUi();
+      loop();
+    }
+
+    function pause() {
+      video.pause(); musicEl.pause(); stopDemoAudio();
+      S.playing = false; cancelAnimationFrame(raf); paint(); syncPlayUi();
+    }
+
+    function toggle() { S.playing ? pause() : play(); }
+
+    function seek(t) {
+      S.t = clamp(t, 0, S.duration);
+      if (S.kind === "video") video.currentTime = S.t;
+      else demoOrigin = performance.now() - S.t * 1000;
+      paint(); syncTime();
+    }
+
+    function loop() {
+      paint();
+      const t = mediaTime();
+      if (t >= S.out - 0.02) {
+        if (rec && rec.state === "recording") { rec.stop(); rec = null; pause(); return; }
+        pause(); seek(S.out); return;
+      }
+      S.t = t;
+      if (nodes) {
+        nodes.analyser.getByteFrequencyData(nodes.freq);
+        const avg = (a, b) => { let s = 0; for (let i = a; i < b; i++) s += nodes.freq[i] || 0; return s / Math.max(1, b - a) / 255; };
+        S.levels = { bass: avg(0, 6), mid: avg(6, 24), high: avg(24, 48) };
+        S.levels.peak = Math.max(S.levels.bass, S.levels.mid, S.levels.high);
+        if (S.music) nodes.duck.gain.setTargetAtTime(clamp(1 - S.levels.mid * (S.music.ducking / 100) * 0.85, 0.18, 1), ac.currentTime, 0.08);
+        if (S.tool === "audio") drawVu();
+      }
+      applyAudio();
+      syncTime();
+      if (S.playing) raf = requestAnimationFrame(loop);
+    }
+
+    function syncPlayUi() {
+      document.getElementById("playBig").hidden = S.playing || (S.tool === "watermark" && S.marking);
+      document.getElementById("pauseMini").hidden = !S.playing;
+      document.getElementById("playSmall").textContent = S.playing ? "❚❚" : "▶";
+    }
+    function syncTime() {
+      document.getElementById("now").textContent = tc(S.t);
+      document.getElementById("dur").textContent = "/ " + tc(S.duration);
+      const p = S.t / Math.max(S.duration, 0.01);
+      document.getElementById("head").style.left = (p * 100) + "%";
+      const clip = document.getElementById("vclip");
+      clip.style.left = (S.in / S.duration * 100) + "%";
+      clip.style.width = ((S.out - S.in) / S.duration * 100) + "%";
+      clip.textContent = S.name;
+    }
+
+    function slider(label, key, min, max, step, bag, fmt) {
+      const v = bag[key];
+      return '<div class="row"><label>' + label + '</label><span class="val">' + (fmt ? fmt(v) : v) + '</span></div>' +
+        '<input type="range" min="' + min + '" max="' + max + '" step="' + (step || 1) + '" value="' + v + '" data-bag="' + (bag === S.v ? "v" : bag === S.a ? "a" : "x") + '" data-key="' + key + '" />';
+    }
+
+    function renderRail() {
+      document.getElementById("rail").innerHTML = TOOLS.map(([id, label]) =>
+        '<button data-tool="' + id + '" class="' + (S.tool === id ? "on" : "") + '">' + label + "</button>"
+      ).join("");
+    }
+
+    function renderPanel() {
+      const p = document.getElementById("panel");
+      if (S.tool === "enhance") {
+        p.innerHTML = "<h2>Enhance</h2><p class='hint'>One-tap grades for picture and voice.</p>" +
+          [["auto","Auto look","Lift, bite, and a clearer voice"],["cinema","Cinema","Warm grade and a soft falloff"],["vivid","Vivid","Punchy picture, open highs"],["night","Night","Low lift, cool shadows"],["voice","Voice first","Podcast-clear vocal bus"],["music","Music lift","Wide body, gentle voice tuck"]]
+            .map(([id, t, h]) => '<button class="preset" data-preset="' + id + '">' + t + "<small>" + h + "</small></button>").join("");
+      } else if (S.tool === "video") {
+        p.innerHTML = "<h2>Video</h2>" +
+          slider("Brightness", "brightness", -50, 50, 1, S.v) +
+          slider("Contrast", "contrast", -50, 50, 1, S.v) +
+          slider("Saturation", "saturation", -60, 60, 1, S.v) +
+          slider("Warmth", "warmth", -50, 50, 1, S.v) +
+          slider("Vignette", "vignette", 0, 80, 1, S.v) +
+          slider("Sharpen", "sharpness", 0, 80, 1, S.v) +
+          slider("Fade", "fade", 0, 2, 0.05, S.v, (v) => v.toFixed(2) + "s") +
+          slider("Reframe", "reframe", 1, 1.4, 0.01, S.v, (v) => v.toFixed(2) + "x");
+      } else if (S.tool === "audio") {
+        p.innerHTML = "<h2>Audio & vocal</h2><p class='hint'>Studio chain for voice: rumble cut, presence, compressor, isolate.</p>" +
+          '<div class="vu"><div class="vu-bars"><div class="vu-col"><div class="vu-fill" id="vu0"></div></div><div class="vu-col"><div class="vu-fill" id="vu1"></div></div><div class="vu-col"><div class="vu-fill" id="vu2"></div></div></div><div class="vu-labels"><span>Low</span><span>Mid</span><span>Air</span></div></div>' +
+          slider("Master", "volume", 0, 2, 0.01, S.a, (v) => Math.round(v * 100) + "%") +
+          slider("Vocal boost", "vocal", 0, 100, 1, S.a) +
+          slider("Presence", "presence", 0, 100, 1, S.a) +
+          slider("Voice isolate", "isolate", 0, 100, 1, S.a) +
+          slider("Bass", "bass", -100, 100, 1, S.a) +
+          slider("Treble", "treble", -100, 100, 1, S.a) +
+          slider("Noise reduce", "noise", 0, 100, 1, S.a) +
+          slider("Compressor", "compress", 0, 100, 1, S.a);
+        drawVu();
+      } else if (S.tool === "music") {
+        p.innerHTML = "<h2>Music</h2><p class='hint'>Import a song. Ducking tucks the bed under voice.</p>" +
+          (S.music
+            ? '<div class="preset">' + S.music.name + "<small>Bed · loops through the cut</small></div>" +
+              '<div class="row"><label>Bed level</label><span class="val">' + Math.round(S.music.volume * 100) + "%</span></div>" +
+              '<input type="range" min="0" max="1.5" step="0.01" value="' + S.music.volume + '" id="mvol" />' +
+              '<div class="row"><label>Duck under voice</label><span class="val">' + S.music.ducking + "</span></div>" +
+              '<input type="range" min="0" max="100" value="' + S.music.ducking + '" id="mduck" />' +
+              '<button class="btn" id="rmMusic">Remove music</button>'
+            : '<button class="btn" id="impMusic">Import music</button>');
+      } else if (S.tool === "picture") {
+        p.innerHTML = "<h2>Picture</h2><p class='hint'>Overlay stills or a title card. Drag overlays on the preview.</p>" +
+          '<button class="btn" id="impPic">Import picture</button>' +
+          S.pictures.map((pic) => '<button class="list-btn ' + (pic.id === S.selectedPic ? "on" : "") + '" data-pic="' + pic.id + '">' + pic.name + "</button>").join("") +
+          (S.pictures.find((x) => x.id === S.selectedPic) ? '<div class="row"><label>Scale</label></div><input type="range" min="0.3" max="2.4" step="0.01" id="pscale" value="' + (S.pictures.find((x) => x.id === S.selectedPic).scale) + '" /><div class="row"><label>Opacity</label></div><input type="range" min="0" max="1" step="0.01" id="pop" value="' + (S.pictures.find((x) => x.id === S.selectedPic).opacity) + '" />' : "") +
+          "<h2 style='margin-top:16px'>Title card</h2>" +
+          '<input class="field" id="titleText" placeholder="Add a title" value="' + S.title.text.replace(/"/g, """) + '" />' +
+          '<div class="row"><label>Size</label></div><input type="range" min="18" max="80" id="tsize" value="' + S.title.size + '" />' +
+          '<div class="chips">' + ["white", "ink", "steel"].map((c) => '<button class="chip ' + (S.title.color === c ? "on" : "") + '" data-color="' + c + '">' + c + "</button>").join("") + "</div>";
+      } else {
+        const sel = S.watermarks.find((w) => w.id === S.selectedWm) || S.watermarks[0];
+        p.innerHTML = "<h2>Stamp removal</h2><p class='hint'>Draw a box over a logo. Blur, clone, or cover it.</p>" +
+          '<div class="mark"><div><div>Draw on preview</div><small style="color:var(--muted)">Drag a rectangle over the stamp</small></div><button class="switch ' + (S.marking ? "on" : "") + '" id="marking"><i></i></button></div>' +
+          (S.kind === "demo" ? '<button class="btn" id="markDemo">Mark demo stamp</button>' : "") +
+          S.watermarks.map((r, i) => '<button class="list-btn ' + (sel && r.id === sel.id ? "on" : "") + '" data-wm="' + r.id + '">Region ' + (i + 1) + " · " + r.mode + "</button>").join("") +
+          (sel ? '<div class="chips">' + ["blur", "clone", "cover"].map((m) => '<button class="chip ' + (sel.mode === m ? "on" : "") + '" data-mode="' + m + '">' + m + "</button>").join("") + "</div>" +
+            '<div class="row"><label>Strength</label></div><input type="range" min="10" max="100" id="wstr" value="' + sel.strength + '" />' : "");
+      }
+      bindPanel();
+    }
+
+    function drawVu() {
+      const ids = ["vu0", "vu1", "vu2"];
+      const vals = [S.levels.bass, S.levels.mid, S.levels.high];
+      ids.forEach((id, i) => { const el = document.getElementById(id); if (el) el.style.height = Math.round((vals[i] || 0) * 100) + "%"; });
+    }
+
+    function bindPanel() {
+      document.querySelectorAll("#panel input[type=range][data-key]").forEach((el) => {
+        el.oninput = () => {
+          const bag = el.dataset.bag === "v" ? S.v : S.a;
+          bag[el.dataset.key] = Number(el.value);
+          applyAudio(); paint(); renderPanel();
+        };
+      });
+      document.querySelectorAll("[data-preset]").forEach((el) => {
+        el.onclick = () => { Object.assign(S.v, PRESETS[el.dataset.preset].v); Object.assign(S.a, PRESETS[el.dataset.preset].a); applyAudio(); paint(); toast("Look applied"); };
+      });
+      const marking = document.getElementById("marking");
+      if (marking) marking.onclick = () => { S.marking = !S.marking; syncPlayUi(); renderPanel(); };
+      const markDemo = document.getElementById("markDemo");
+      if (markDemo) markDemo.onclick = () => { const id = uid(); S.watermarks.push({ id, ...WM, mode: "blur", strength: 80 }); S.selectedWm = id; paint(); renderPanel(); };
+      document.querySelectorAll("[data-mode]").forEach((el) => {
+        el.onclick = () => { const sel = S.watermarks.find((w) => w.id === S.selectedWm) || S.watermarks[0]; if (sel) { sel.mode = el.dataset.mode; paint(); renderPanel(); } };
+      });
+      document.querySelectorAll("[data-wm]").forEach((el) => { el.onclick = () => { S.selectedWm = el.dataset.wm; renderPanel(); }; });
+      const wstr = document.getElementById("wstr");
+      if (wstr) wstr.oninput = () => { const sel = S.watermarks.find((w) => w.id === S.selectedWm) || S.watermarks[0]; if (sel) { sel.strength = Number(wstr.value); paint(); } };
+      document.querySelectorAll("[data-pic]").forEach((el) => { el.onclick = () => { S.selectedPic = el.dataset.pic; renderPanel(); }; });
+      const pscale = document.getElementById("pscale");
+      if (pscale) pscale.oninput = () => { const p = S.pictures.find((x) => x.id === S.selectedPic); if (p) { p.scale = Number(pscale.value); paint(); } };
+      const pop = document.getElementById("pop");
+      if (pop) pop.oninput = () => { const p = S.pictures.find((x) => x.id === S.selectedPic); if (p) { p.opacity = Number(pop.value); paint(); } };
+      const titleText = document.getElementById("titleText");
+      if (titleText) titleText.oninput = () => { S.title.text = titleText.value; paint(); };
+      const tsize = document.getElementById("tsize");
+      if (tsize) tsize.oninput = () => { S.title.size = Number(tsize.value); paint(); };
+      document.querySelectorAll("[data-color]").forEach((el) => { el.onclick = () => { S.title.color = el.dataset.color; paint(); renderPanel(); }; });
+      const mvol = document.getElementById("mvol");
+      if (mvol) mvol.oninput = () => { S.music.volume = Number(mvol.value); applyAudio(); };
+      const mduck = document.getElementById("mduck");
+      if (mduck) mduck.oninput = () => { S.music.ducking = Number(mduck.value); };
+      const rm = document.getElementById("rmMusic");
+      if (rm) rm.onclick = () => { S.music = null; musicEl.removeAttribute("src"); renderPanel(); };
+      ["impMusic", "impPic"].forEach((id) => { const el = document.getElementById(id); if (el) el.onclick = () => document.getElementById("file").click(); });
+    }
+
+    document.getElementById("rail").onclick = (e) => {
+      const b = e.target.closest("[data-tool]");
+      if (!b) return;
+      S.tool = b.dataset.tool;
+      renderRail(); renderPanel(); syncPlayUi();
+    };
+
+    document.getElementById("importBtn").onclick = () => document.getElementById("file").click();
+    document.getElementById("playBig").onclick = toggle;
+    document.getElementById("pauseMini").onclick = toggle;
+    document.getElementById("playSmall").onclick = toggle;
+    document.getElementById("toIn").onclick = () => seek(S.in);
+    document.getElementById("stop").onclick = () => { pause(); seek(S.in); };
+
+    document.getElementById("track").onpointerdown = (e) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const seekFrom = (x) => seek(((x - rect.left) / rect.width) * S.duration);
+      seekFrom(e.clientX);
+      e.currentTarget.setPointerCapture(e.pointerId);
+      e.currentTarget.onpointermove = (ev) => { if (ev.buttons) seekFrom(ev.clientX); };
+    };
+
+    document.getElementById("file").onchange = async (e) => {
+      for (const file of e.target.files) {
+        const url = URL.createObjectURL(file);
+        if (file.type.startsWith("video/") || /\.(mp4|webm|mov)$/i.test(file.name)) {
+          video.src = url;
+          await new Promise((res, rej) => { video.onloadedmetadata = res; video.onerror = rej; });
+          S.kind = "video"; S.name = file.name; S.duration = video.duration || 8; S.in = 0; S.out = S.duration; S.t = 0;
+          canvas.width = video.videoWidth || 1280; canvas.height = video.videoHeight || 720;
+          document.getElementById("clipName").textContent = file.name;
+          document.getElementById("clipKind").textContent = "Imported clip";
+          toast("Video loaded");
+        } else if (file.type.startsWith("audio/") || /\.(mp3|wav|m4a)$/i.test(file.name)) {
+          S.music = { name: file.name, url, volume: 0.7, ducking: 45 };
+          musicEl.src = url;
+          toast("Music bed loaded");
+          if (S.tool === "music") renderPanel();
+        } else if (file.type.startsWith("image/")) {
+          const id = uid();
+          S.pictures.push({ id, name: file.name, url, x: 0.82, y: 0.18, scale: 1, opacity: 1 });
+          S.selectedPic = id;
+          toast("Picture overlay added");
+          if (S.tool === "picture") renderPanel();
+        }
+      }
+      e.target.value = "";
+      paint();
+    };
+
+    const drop = document.getElementById("drop");
+    drop.ondragover = (e) => e.preventDefault();
+    drop.ondrop = (e) => {
+      e.preventDefault();
+      document.getElementById("file").files = e.dataTransfer.files;
+      document.getElementById("file").dispatchEvent(new Event("change"));
+    };
+
+    let draft = null, origin = null, dragPic = null;
+    function contentRect() {
+      const rect = canvas.getBoundingClientRect();
+      const aspect = canvas.width / canvas.height, box = rect.width / rect.height;
+      let w, h;
+      if (box > aspect) { h = rect.height; w = h * aspect; } else { w = rect.width; h = w / aspect; }
+      return { x: rect.left + (rect.width - w) / 2, y: rect.top + (rect.height - h) / 2, w, h };
+    }
+    function toNorm(cx, cy) {
+      const r = contentRect();
+      return { x: (cx - r.x) / r.w, y: (cy - r.y) / r.h };
+    }
+    canvas.onpointerdown = (e) => {
+      const p = toNorm(e.clientX, e.clientY);
+      if (p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1) return;
+      if (S.tool === "picture") {
+        const hit = [...S.pictures].reverse().find((pic) => Math.hypot(p.x - pic.x, p.y - pic.y) < 0.12 * pic.scale);
+        if (hit) { S.selectedPic = hit.id; dragPic = hit; canvas.setPointerCapture(e.pointerId); return; }
+      }
+      if (S.tool === "watermark" && S.marking) {
+        origin = p; draft = { x: p.x, y: p.y, w: 0, h: 0 }; canvas.setPointerCapture(e.pointerId); return;
+      }
+      if (S.tool !== "watermark" && S.tool !== "picture") toggle();
+    };
+    canvas.onpointermove = (e) => {
+      const p = toNorm(e.clientX, e.clientY);
+      if (dragPic) { dragPic.x = clamp(p.x, 0, 1); dragPic.y = clamp(p.y, 0, 1); paint(); return; }
+      if (!origin) return;
+      draft = { x: Math.min(origin.x, p.x), y: Math.min(origin.y, p.y), w: Math.abs(p.x - origin.x), h: Math.abs(p.y - origin.y) };
+    };
+    canvas.onpointerup = () => {
+      dragPic = null;
+      if (draft && draft.w > 0.02 && draft.h > 0.02) {
+        const id = uid();
+        S.watermarks.push({ id, ...draft, mode: "blur", strength: 70 });
+        S.selectedWm = id; paint(); if (S.tool === "watermark") renderPanel();
+      }
+      origin = null; draft = null;
+    };
+
+    document.getElementById("exportBtn").onclick = async () => {
+      try {
+        await ensureAudio(); await ac.resume();
+        const mime = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find((t) => MediaRecorder.isTypeSupported(t));
+        if (!mime) { toast("This browser cannot record WebM"); return; }
+        const mixed = new MediaStream([...canvas.captureStream(30).getVideoTracks(), ...nodes.recDest.stream.getAudioTracks()]);
+        const chunks = [];
+        rec = new MediaRecorder(mixed, { mimeType: mime, videoBitsPerSecond: 6000000 });
+        rec.ondataavailable = (ev) => { if (ev.data.size) chunks.push(ev.data); };
+        rec.onstop = () => {
+          const blob = new Blob(chunks, { type: mime });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "lumacut-cut.webm";
+          a.click();
+          toast("Cut saved");
+        };
+        seek(S.in);
+        rec.start(200);
+        document.getElementById("exportBtn").disabled = true;
+        await play();
+        const wait = setInterval(() => {
+          if (!rec || rec.state === "inactive") {
+            clearInterval(wait);
+            document.getElementById("exportBtn").disabled = false;
+          }
+        }, 300);
+      } catch (err) {
+        toast(err.message || "Export failed");
+      }
+    };
+
+    window.addEventListener("keydown", (e) => {
+      const tag = (e.target.tagName || "");
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.code === "Space" || e.key === "k") { e.preventDefault(); toggle(); }
+      if (e.code === "ArrowLeft") { e.preventDefault(); seek(S.t - (e.shiftKey ? 1 : 0.12)); }
+      if (e.code === "ArrowRight") { e.preventDefault(); seek(S.t + (e.shiftKey ? 1 : 0.12)); }
+      if (e.key === "Home") seek(S.in);
+    });
+
+    renderRail();
+    renderPanel();
+    paint();
+    syncTime();
+    syncPlayUi();
+  </script>
+</body>
+</html>
