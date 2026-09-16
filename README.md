@@ -1,21 +1,19 @@
 # LumaCut
 
-Offline video studio in a single file. Enhance picture, voice, music, overlays, and stamp removal. Export a WebM cut.
+Offline video studio. One folder. No install.
 
 ## Download
 
-- **[LumaCut.zip](https://github.com/findsuper/lumacut-studio/raw/main/LumaCut.zip)** — unzip, then open `LumaCut.html`
-- **[LumaCut.html](https://github.com/findsuper/lumacut-studio/raw/main/LumaCut.html)** — save and open in Chrome or Edge
+**[Download LumaCut.zip](https://github.com/findsuper/lumacut-studio/raw/main/LumaCut.zip)**
 
-Repo zip: https://github.com/findsuper/lumacut-studio/archive/refs/heads/main.zip
+## Open on Windows
 
-## How to open
+1. Right-click the zip → **Extract All**.
+2. Open the unzipped folder.
+3. Double-click **Open-LumaCut.bat** or **OPEN-ME.html** (Chrome or Edge).
 
-1. Unzip if you downloaded the zip.
-2. Double-click `LumaCut.html` (or right-click → Open with **Chrome** or **Edge**).
-3. Press Play for the demo reel, or Import your own video / audio / pictures.
-4. Export saves a `.webm` to your Downloads folder.
+Windows may hide the `.html` ending. Look for **OPEN-ME** with a browser icon.
 
-No install. Your clips stay on your computer.
+## Open on Mac
 
-Chrome and Edge work best. Safari often cannot export WebM.
+Double-click **OPEN-ME.html** → Open With Chrome or Edge.

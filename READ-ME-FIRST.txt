@@ -1,0 +1,13 @@
+LumaCut — how to open
+
+WINDOWS
+1. Right-click LumaCut.zip → Extract All → Extract.
+2. Open the unzipped folder.
+3. Double-click Open-LumaCut.bat
+   or double-click OPEN-ME.html (Chrome or Edge).
+
+The studio file may show as "OPEN-ME" without .html
+if Windows hides file extensions. That is the app.
+
+MAC
+Double-click OPEN-ME.html → Open With → Chrome or Edge.
